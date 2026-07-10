@@ -5,8 +5,8 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL = 'gemini-flash-latest';
 
 const SUMMARY_INSTRUCTIONS =
-  "Resume ce contenu en francais, sous forme de points cles concis et structures. " +
-  'Va droit au but, pas de blabla introductif.';
+  'Summarize this content in English, as concise and structured key points. ' +
+  'Get straight to the point, no introductory fluff.';
 
 export async function summarizeYoutubeUrl(url) {
   const response = await ai.models.generateContent({
@@ -30,7 +30,7 @@ export async function summarizeText(title, text) {
 
   const response = await ai.models.generateContent({
     model: MODEL,
-    contents: `${SUMMARY_INSTRUCTIONS}\n\nTitre : ${title}\n\nContenu :\n${truncated}`,
+    contents: `${SUMMARY_INSTRUCTIONS}\n\nTitle: ${title}\n\nContent:\n${truncated}`,
   });
 
   return response.text;
