@@ -1,0 +1,17 @@
+{
+  "name": "discord-sumupvidz",
+  "version": "1.0.0",
+  "description": "Bot Discord qui resume automatiquement les videos YouTube et pages web partagees dans un salon, via l'API Gemini.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.11.0",
+    "@mozilla/readability": "^0.5.0",
+    "discord.js": "^14.26.0",
+    "dotenv": "^16.4.5",
+    "jsdom": "^25.0.1"
+  }
+}
