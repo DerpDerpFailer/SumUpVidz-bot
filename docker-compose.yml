@@ -6,4 +6,8 @@ services:
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      ALLOWED_CHANNEL_IDS: ${ALLOWED_CHANNEL_IDS}
+    volumes:
+      - sumupvidz-data:/app/data
+
+volumes:
+  sumupvidz-data:

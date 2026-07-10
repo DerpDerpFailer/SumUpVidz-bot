@@ -15,9 +15,11 @@ Bot Discord qui detecte automatiquement les liens YouTube et les liens web poste
    - Cliquer sur **Reset Token** pour generer le token, et le copier (vous ne pourrez plus le revoir apres avoir quitte la page).
    - Descendre jusqu'a **Privileged Gateway Intents** et activer **MESSAGE CONTENT INTENT** (indispensable : sans ca, le bot ne peut pas lire le contenu des messages, donc ne peut pas detecter les liens).
 3. Aller dans **OAuth2 > URL Generator** :
-   - Dans **Scopes**, cocher `bot`.
+   - Dans **Scopes**, cocher `bot` **et** `applications.commands` (indispensable pour que la commande `/sumup` fonctionne).
    - Dans **Bot Permissions**, cocher au minimum : `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`.
    - Copier l'URL generee en bas de page, l'ouvrir dans un navigateur, et inviter le bot sur votre serveur.
+
+Si le bot est deja invite sans le scope `applications.commands`, regenerez l'URL avec les deux scopes coches et re-autorisez-la sur le meme serveur : ca ajoute le scope manquant sans avoir a re-inviter le bot depuis zero.
 
 Gardez le **token** de coté, il vous servira de valeur pour `DISCORD_TOKEN`.
 
@@ -68,8 +70,7 @@ Cette methode fait construire l'image Docker par Portainer directement depuis vo
    |---|---|
    | `DISCORD_TOKEN` | le token recupere a l'etape 1 |
    | `GEMINI_API_KEY` | la cle recuperee a l'etape 2 |
-   | `ALLOWED_CHANNEL_IDS` | (optionnel) IDs de salons separes par des virgules |
-6. Cliquer sur **Deploy the stack**. Portainer clone le repo, build l'image via le `Dockerfile`, et demarre le conteneur.
+6. Cliquer sur **Deploy the stack**. Portainer clone le repo, build l'image via le `Dockerfile`, et demarre le conteneur. Un volume Docker nomme (`sumupvidz-data`) est cree automatiquement pour stocker la configuration des salons : il persiste entre deux redeploiements.
 7. Verifier que ca tourne : dans **Containers**, ouvrir `discord-sumupvidz` puis l'onglet **Logs** — vous devez voir `Connecte en tant que ...`.
 
 ### Mettre a jour le bot apres un changement de code
@@ -82,7 +83,19 @@ Dans Portainer, ouvrir la stack `discord-sumupvidz` et cliquer sur **Pull and re
 |---|---|---|
 | `DISCORD_TOKEN` | oui | Token du bot, depuis le Discord Developer Portal. |
 | `GEMINI_API_KEY` | oui | Cle API Gemini, depuis Google AI Studio. |
-| `ALLOWED_CHANNEL_IDS` | non | Liste d'IDs de salons Discord (separes par des virgules) ou le bot doit repondre. Vide = tous les salons accessibles. |
+
+## Restreindre le bot a un salon
+
+Par defaut, le bot repond dans tous les salons ou il a acces. Un membre avec la permission **Gerer le serveur** peut le restreindre a un seul salon avec la commande :
+
+```
+/sumup channel [salon]
+```
+
+- Sans argument : restreint au salon ou la commande est tapee.
+- Avec un salon en argument : restreint a ce salon precis.
+
+Ce reglage est stocke par serveur dans le volume `sumupvidz-data` et survit aux redeploiements.
 
 ## Limites connues
 

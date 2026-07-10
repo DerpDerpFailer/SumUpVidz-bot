@@ -1,12 +1,9 @@
 import 'dotenv/config';
-import { Client, Events, GatewayIntentBits, EmbedBuilder } from 'discord.js';
+import { Client, Events, GatewayIntentBits, EmbedBuilder, MessageFlags } from 'discord.js';
 import { summarizeYoutubeUrl, summarizeText } from './gemini.js';
 import { extractArticle } from './extractor.js';
-
-const ALLOWED_CHANNELS = (process.env.ALLOWED_CHANNEL_IDS || '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+import { registerCommandsForGuild } from './commands.js';
+import { getAllowedChannel, setAllowedChannel } from './config.js';
 
 const YOUTUBE_REGEX =
   /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)[\w-]+|youtu\.be\/[\w-]+)/i;
@@ -20,13 +17,41 @@ const client = new Client({
   ],
 });
 
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Connecte en tant que ${readyClient.user.tag}`);
+
+  for (const guild of readyClient.guilds.cache.values()) {
+    registerCommandsForGuild(readyClient, guild.id).catch((err) =>
+      console.error(`Impossible d'enregistrer la commande sur ${guild.name} :`, err),
+    );
+  }
+});
+
+client.on(Events.GuildCreate, (guild) => {
+  registerCommandsForGuild(client, guild.id).catch((err) =>
+    console.error(`Impossible d'enregistrer la commande sur ${guild.name} :`, err),
+  );
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'sumup') return;
+
+  if (interaction.options.getSubcommand() === 'channel') {
+    const channel = interaction.options.getChannel('salon') ?? interaction.channel;
+    await setAllowedChannel(interaction.guildId, channel.id);
+    await interaction.reply({
+      content: `Je ne repondrai plus qu'aux liens postes dans ${channel}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) return;
-  if (ALLOWED_CHANNELS.length && !ALLOWED_CHANNELS.includes(message.channelId)) return;
+  if (message.author.bot || !message.guildId) return;
+
+  const allowedChannelId = await getAllowedChannel(message.guildId);
+  if (allowedChannelId && message.channelId !== allowedChannelId) return;
 
   const urls = message.content.match(URL_REGEX);
   if (!urls) return;
