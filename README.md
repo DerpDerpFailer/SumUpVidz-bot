@@ -1,12 +1,14 @@
 # Discord SumUpVidz
 
-Bot Discord qui detecte automatiquement les liens YouTube et les liens web postes dans un salon, et repond avec un resume en points cles genere par l'API Gemini.
+Bot Discord qui detecte automatiquement les liens YouTube et les liens web postes dans un salon, et repond avec un resume en points cles (en anglais) genere par l'API Gemini.
+
+Toutes les reponses et commandes du bot sont en anglais.
 
 ## Prerequis
 
 - Un compte Discord et les droits pour creer une application/bot sur le serveur cible.
 - Une cle API Gemini (gratuite) : https://aistudio.google.com/apikey
-- Une VM Debian avec Docker + Portainer (pour le deploiement en production).
+- Un hote Docker avec Portainer pour la production (actuellement : Unraid x86_64 ; l'image tourne aussi sur arm64).
 
 ## 1. Creer le bot Discord
 
@@ -47,35 +49,43 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/<votre-utilisateur>/discord-sumupvidz.git
+git remote add origin https://github.com/<votre-utilisateur>/SumUpVidz-bot.git
 git push -u origin main
 ```
 
 Le `.gitignore` exclut deja `node_modules/` et `.env` : votre token et votre cle API ne seront jamais commit.
 
-## 5. Deployer sur votre VM Debian via Portainer
+## 5. Deployer sur Unraid via Portainer
 
-Cette methode fait construire l'image Docker par Portainer directement depuis votre depot GitHub, ce qui permet de redeployer facilement en cas de mise a jour du code.
+Portainer construit l'image directement depuis le depot GitHub. Le bot tourne en utilisateur non-root `node` (UID/GID 1000) et ses donnees (configuration des salons) sont dans un dossier de l'hote.
 
-1. Ouvrir l'interface web de Portainer, puis dans le menu de gauche : **Stacks** > **Add stack**.
-2. **Name** : `discord-sumupvidz` (ou ce que vous voulez).
-3. **Build method** : choisir **Repository**.
-4. Renseigner :
-   - **Repository URL** : `https://github.com/<votre-utilisateur>/discord-sumupvidz`
-   - **Repository reference** : `refs/heads/main`
-   - **Compose path** : `docker-compose.yml`
-   - Si le repo est prive, activer **Authentication** et fournir un [Personal Access Token GitHub](https://github.com/settings/tokens) (scope `repo` en lecture suffit).
-5. Descendre jusqu'a **Environment variables** et ajouter :
+1. Sur l'hote Unraid, creer le dossier de donnees et le donner a l'UID 1000 :
+   ```bash
+   mkdir -p /mnt/user/appdata/sumupvidz-bot/data
+   chown -R 1000:1000 /mnt/user/appdata/sumupvidz-bot
+   ```
+2. Dans Portainer : declarer le depot comme **Git source** si besoin, puis **Stacks** > **Add stack** :
+   - **Name** : `sumupvidz-bot`
+   - **Build method** : **Repository**, reference `refs/heads/main`, compose path `docker-compose.yml`
+   - **GitOps updates** : desactive (on redeploie a la main).
+3. **Environment variables** :
    | Name | Value |
    |---|---|
    | `DISCORD_TOKEN` | le token recupere a l'etape 1 |
    | `GEMINI_API_KEY` | la cle recuperee a l'etape 2 |
-6. Cliquer sur **Deploy the stack**. Portainer clone le repo, build l'image via le `Dockerfile`, et demarre le conteneur. Un volume Docker nomme (`sumupvidz-data`) est cree automatiquement pour stocker la configuration des salons : il persiste entre deux redeploiements.
-7. Verifier que ca tourne : dans **Containers**, ouvrir `sumupvidz-bot` puis l'onglet **Logs** — vous devez voir `Logged in as ...`.
+   | `SUMUPVIDZ_DATA_PATH` | `/mnt/user/appdata/sumupvidz-bot/data` |
+   | `BOT_REPLICAS` | `1` (ou `0` pour deployer sans connecter le bot) |
+4. **Deploy the stack**, puis verifier dans **Containers** > `sumupvidz-bot` > **Logs** : `Logged in as ...`.
+
+L'icone affichee dans l'onglet Docker d'Unraid vient du label `net.unraid.docker.icon` du `docker-compose.yml` (`icons/SumUpVidz-256.png`, servi par jsDelivr).
+
+> **Un seul bot par token.** Ne jamais faire tourner deux instances avec le meme `DISCORD_TOKEN` (ex : ancienne et nouvelle machine pendant une migration). Mettre `BOT_REPLICAS=0` sur l'instance qui doit rester eteinte.
+
+Sans `SUMUPVIDZ_DATA_PATH`, le compose utilise un volume Docker nomme `sumupvidz-data` (pratique en local ou sur un autre hote). Si ce volume a ete cree par une ancienne image qui tournait en root, faire un `chown -R 1000:1000` sur son contenu.
 
 ### Mettre a jour le bot apres un changement de code
 
-Dans Portainer, ouvrir la stack `discord-sumupvidz` et cliquer sur **Pull and redeploy** (ou **Update the stack**) : Portainer re-clone la derniere version du repo et reconstruit l'image.
+Dans Portainer, ouvrir la stack `sumupvidz-bot` et cliquer sur **Pull and redeploy** (avec **Re-pull image and redeploy**) : Portainer re-clone la derniere version du depot et reconstruit l'image. Les dependances sont figees par `package-lock.json` (`npm ci`).
 
 ## Variables d'environnement
 
@@ -83,6 +93,19 @@ Dans Portainer, ouvrir la stack `discord-sumupvidz` et cliquer sur **Pull and re
 |---|---|---|
 | `DISCORD_TOKEN` | oui | Token du bot, depuis le Discord Developer Portal. |
 | `GEMINI_API_KEY` | oui | Cle API Gemini, depuis Google AI Studio. |
+| `SUMUPVIDZ_DATA_PATH` | non | Chemin hote des donnees (defaut : volume nomme `sumupvidz-data`). Doit appartenir a l'UID 1000. |
+| `BOT_REPLICAS` | non | `1` (defaut) pour lancer le bot, `0` pour garder la stack sans connexion a Discord. |
+
+## Fonctionnement
+
+- Le bot affiche « is typing... » pendant toute la generation du resume.
+- Si Gemini est surcharge ou indisponible (HTTP 429/500/503/504 ou erreur reseau), le bot retente jusqu'a 3 fois (attente de 15 s puis 30 s) et l'indique dans un message de statut :
+  - `⏳ Gemini is overloaded, 2nd try in 15s (attempt 2/3)...`
+  - `⏳ Gemini is overloaded, 3rd try in 30s (attempt 3/3)...`
+  - apres 3 echecs : `❌ Gemini is still overloaded after 3 tries. Please try again later.`
+- Ce message de statut est supprime si le resume finit par arriver.
+- Les erreurs definitives (video privee, page illisible...) ne sont pas retentees : `❌ Sorry, I couldn't summarize <url>.`
+- Les delais de retry se reglent dans `RETRY_DELAYS_MS` (`src/gemini.js`).
 
 ## Restreindre le bot a un salon
 
@@ -93,9 +116,9 @@ Par defaut, le bot repond dans tous les salons ou il a acces. Un membre avec la 
 ```
 
 - Sans argument : restreint au salon ou la commande est tapee.
-- Avec un salon en argument : restreint a ce salon precis.
+- Avec l'option `channel` : restreint a ce salon precis.
 
-Ce reglage est stocke par serveur dans le volume `sumupvidz-data` et survit aux redeploiements.
+Ce reglage est stocke par serveur dans `data/config.json` (dossier `SUMUPVIDZ_DATA_PATH` ou volume `sumupvidz-data`) et survit aux redeploiements.
 
 ## Limites connues
 
