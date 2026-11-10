@@ -1,13 +1,20 @@
 services:
   discord-sumupvidz:
     build: .
-    container_name: discord-sumupvidz
+    container_name: sumupvidz-bot
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
-      - sumupvidz-data:/app/data
+      # Unraid: SUMUPVIDZ_DATA_PATH=/mnt/user/appdata/sumupvidz-bot/data (owned 1000:1000)
+      - ${SUMUPVIDZ_DATA_PATH:-sumupvidz-data}:/app/data
+    deploy:
+      # Set to 0 to keep the stack deployed without connecting to Discord
+      # (never run two instances on the same token).
+      replicas: ${BOT_REPLICAS:-1}
+    labels:
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/DerpDerpFailer/SumUpVidz-bot@main/icons/SumUpVidz-256.png
 
 volumes:
   sumupvidz-data:
