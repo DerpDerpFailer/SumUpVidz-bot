@@ -8,7 +8,7 @@ export async function extractArticle(url) {
   });
 
   if (!res.ok) {
-    throw new Error(`Impossible de recuperer la page (HTTP ${res.status})`);
+    throw new Error(`Unable to fetch the page (HTTP ${res.status})`);
   }
 
   const html = await res.text();
@@ -16,7 +16,7 @@ export async function extractArticle(url) {
   const article = new Readability(dom.window.document).parse();
 
   if (!article || !article.textContent?.trim()) {
-    throw new Error("Impossible d'extraire le contenu de la page");
+    throw new Error('Unable to extract the page content');
   }
 
   return { title: article.title || url, text: article.textContent };

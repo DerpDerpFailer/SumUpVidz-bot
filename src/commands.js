@@ -8,16 +8,16 @@ import {
 
 export const sumupCommand = new SlashCommandBuilder()
   .setName('sumup')
-  .setDescription('Configuration du bot de resume')
+  .setDescription('Summary bot settings')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addSubcommand((sub) =>
     sub
       .setName('channel')
-      .setDescription('Restreint le bot a un seul salon (par defaut : le salon courant)')
+      .setDescription('Restrict the bot to a single channel (defaults to the current one)')
       .addChannelOption((opt) =>
         opt
-          .setName('salon')
-          .setDescription('Salon dans lequel le bot doit repondre')
+          .setName('channel')
+          .setDescription('Channel the bot should reply in')
           .addChannelTypes(ChannelType.GuildText)
           .setRequired(false),
       ),

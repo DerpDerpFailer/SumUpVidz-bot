@@ -71,7 +71,7 @@ Cette methode fait construire l'image Docker par Portainer directement depuis vo
    | `DISCORD_TOKEN` | le token recupere a l'etape 1 |
    | `GEMINI_API_KEY` | la cle recuperee a l'etape 2 |
 6. Cliquer sur **Deploy the stack**. Portainer clone le repo, build l'image via le `Dockerfile`, et demarre le conteneur. Un volume Docker nomme (`sumupvidz-data`) est cree automatiquement pour stocker la configuration des salons : il persiste entre deux redeploiements.
-7. Verifier que ca tourne : dans **Containers**, ouvrir `discord-sumupvidz` puis l'onglet **Logs** — vous devez voir `Connecte en tant que ...`.
+7. Verifier que ca tourne : dans **Containers**, ouvrir `sumupvidz-bot` puis l'onglet **Logs** — vous devez voir `Logged in as ...`.
 
 ### Mettre a jour le bot apres un changement de code
 
@@ -89,7 +89,7 @@ Dans Portainer, ouvrir la stack `discord-sumupvidz` et cliquer sur **Pull and re
 Par defaut, le bot repond dans tous les salons ou il a acces. Un membre avec la permission **Gerer le serveur** peut le restreindre a un seul salon avec la commande :
 
 ```
-/sumup channel [salon]
+/sumup channel [channel]
 ```
 
 - Sans argument : restreint au salon ou la commande est tapee.
